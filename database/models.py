@@ -23,6 +23,7 @@ class Tasks(Base):
     is_completed: Mapped[bool] = mapped_column()
     tag: Mapped[str | None] = mapped_column(String(50), default=None)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
+    expiring_date: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
 
 class Flashcards(Base):
     __tablename__ = "flashcards"

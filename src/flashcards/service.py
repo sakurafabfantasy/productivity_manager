@@ -1,7 +1,6 @@
 from database.models import Flashcards
 from database.connection import async_session
 from sqlalchemy import select, delete
-from src.flashcards.get_tr import translate
 from datetime import timedelta, datetime
 
 async def add_word(trword: str, lang: str, word: str):

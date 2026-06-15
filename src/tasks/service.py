@@ -1,7 +1,7 @@
 from database.models import Tasks
 from database.connection import async_session
 from sqlalchemy import select, delete
-
+from datetime import datetime, timedelta
 
 async def set_task(title: str, tag: str | None = None, is_completed: bool = False):
     async with async_session() as session:
@@ -41,3 +41,11 @@ async def del_all():
     async with async_session() as session:
         await session.execute(delete(Tasks))
         await session.commit()
+
+async def archive_date(id: int):
+    async with async_session() as session:
+        result = await session.scalar(select(Tasks).where(Tasks.id == id))
+        if result:
+            result.expiring_date = datetime.now() + timedelta(days=30)
+        await session.commit()
+            

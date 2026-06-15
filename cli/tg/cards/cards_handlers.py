@@ -1,6 +1,6 @@
 from aiogram import F, Router
 from aiogram.types import Message, CallbackQuery
-from aiogram.filters import Command, CommandStart
+from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import StatesGroup, State
 import cli.tg.cards.keyboards as kb
