@@ -4,7 +4,7 @@ from src.flashcards.service import add_word, cards_list, del_all, choosen_words,
 from rich.console import Console
 from src.flashcards.get_tr import translate
 from rich.table import Table
-import re
+
 
 console = Console()
 cards_app = typer.Typer(help="Анки")

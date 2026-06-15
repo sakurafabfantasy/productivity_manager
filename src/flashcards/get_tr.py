@@ -5,7 +5,7 @@ from google.genai.errors import ServerError, ClientError
 client = genai.Client(api_key=API_KEY)
 
 
-def translate(word: str, lang: str):
+async def translate(word: str, lang: str):
     prompt = f"""
 Ты — часть API для приложения-переводчика. Твоя задача — строго следовать формату ответа.
 

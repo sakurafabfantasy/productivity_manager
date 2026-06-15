@@ -3,44 +3,32 @@ from aiogram.types import Message, CallbackQuery
 from aiogram.filters import Command, CommandStart
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import StatesGroup, State
-import cli.tg.keyboards as kb
+import cli.tg.cards.keyboards as kb
 from src.flashcards.service import (
     choosen_words,
     choosen_words_tr,
     change_card_status,
     add_word,
+    delete_card,
+    cards_list
 )
 from src.flashcards.get_tr import translate
 
 router = Router()
 
 
-class StudyState(StatesGroup):
+class CardsFSM(StatesGroup):
     learning = State()
+    adding = State()
+    deleting = State()
 
 
-class StudyState2(StatesGroup):
-    addding = State()
-
-
-async def welcome(event: Message | CallbackQuery):
-    text = f"Привет {event.from_user.first_name}! Нажмите /study для изучения слов"
-    if isinstance(event, CallbackQuery):
-        await event.message.edit_text(text)
-        await event.answer()
-
-    else:
-        await event.reply(text)
-
-
-@router.callback_query((F.data == "to_main_lang") | (F.data == "to_main"))
+@router.callback_query((F.data == "to_main_lang") | (F.data == "to_main") | (F.data == "studycmd"))
 async def tomain(callback: CallbackQuery):
-    await welcome(callback)
+    text = f"Список доступных команд:\n/study - изучение слов\n/add - добавление карточки\n/del - удаление карточки"
+    await callback.message.edit_text(text)
 
 
-@router.message(CommandStart())
-async def cmd_start(message: Message):
-    await welcome(message)
 
 
 @router.message(Command("study"))
@@ -54,7 +42,7 @@ async def get_all(message: Message):
 @router.callback_query(F.data.startswith("lang_"))
 async def start_learning(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
-    await state.set_state(StudyState.learning)
+    await state.set_state(CardsFSM.learning)
     lang = callback.data.split("_")[-1]
     words = await choosen_words(lang=lang)
     if not words:
@@ -63,7 +51,9 @@ async def start_learning(callback: CallbackQuery, state: FSMContext):
             reply_markup=await kb.kb_show_start()
 
         )
+        await state.clear()
         return
+    
     await state.update_data(words=words, lang=lang, current_index=0)
 
     current_word = words[0]
@@ -72,7 +62,7 @@ async def start_learning(callback: CallbackQuery, state: FSMContext):
     )
 
 
-@router.callback_query(F.data.startswith("translate_"))
+@router.callback_query(F.data.startswith("translate_"), CardsFSM.learning)
 async def translate_word(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
     data = await state.get_data()
@@ -86,7 +76,7 @@ async def translate_word(callback: CallbackQuery, state: FSMContext):
     )
 
 
-@router.callback_query(F.data.startswith("mark_"))
+@router.callback_query(F.data.startswith("mark_"), CardsFSM.learning)
 async def continue_learning(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
 
@@ -114,13 +104,13 @@ async def continue_learning(callback: CallbackQuery, state: FSMContext):
 
 @router.message(Command("add"))
 async def add_msg(message: Message, state: FSMContext):
-    await state.set_state(StudyState2.addding)
+    await state.set_state(CardsFSM.adding)
     await message.answer(
         "Введи карточку в формате: слово, язык на который нужно перевести слово, пример: персик,испанский"
     )
 
 
-@router.message(StudyState2.addding)
+@router.message(CardsFSM.adding)
 async def new_word(message: Message, state: FSMContext):
     usr_input = message.text.strip()
     try:
@@ -129,6 +119,7 @@ async def new_word(message: Message, state: FSMContext):
         await message.answer(
             "Неверный формат ввода! Нажмите /add для повторного добавления"
         )
+        await state.clear()
         return
 
     status_msg = await message.answer("Идёт перевод слова через Gemini, подождите")
@@ -139,6 +130,7 @@ async def new_word(message: Message, state: FSMContext):
         await status_msg.edit_text(
             "Ошибка подключения к нейросети! Поробуйте ещё раз через пару минут!"
         )
+        await state.clear()
         return
     trword, lang2, lang = [x.strip().capitalize() for x in output.split(",")]
 
@@ -146,3 +138,28 @@ async def new_word(message: Message, state: FSMContext):
     await status_msg.edit_text(
         f"Слово {word} на {lang2} -> {trword}. Слово успешно добавлено в БД. Нажмите /study для изучения карточек"
     )
+    await state.clear()
+
+@router.message(Command("del"))
+async def del_card_msg(message: Message, state: FSMContext):
+    await state.set_state(CardsFSM.deleting)
+    await message.answer("Введите ID карточки или карточек через запятую которые вы хотите удалить\nПример №1: 43,45. Пример №2: 56")
+    text = []
+    words = await cards_list()
+    for word in words:
+        text.append(f"ID: {word.id}, Слово: {word.word}")
+    response_text = "\n".join(text)
+    await message.answer(response_text)
+
+@router.message(CardsFSM.deleting)
+async def del_card(message: Message, state: FSMContext):
+    nums = [item.strip() for item in message.text.split(",")]
+    for id in nums:
+        try:
+            await delete_card(int(id))
+        except ValueError:
+            await message.reply("Неверный формат ввода!")
+    await message.answer(f"Удалены карточки: {','.join(nums)} ")
+    await state.clear()
+
+    
