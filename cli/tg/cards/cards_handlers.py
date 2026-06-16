@@ -23,20 +23,28 @@ class CardsFSM(StatesGroup):
     deleting = State()
 
 
-@router.callback_query((F.data == "to_main_lang") | (F.data == "to_main") | (F.data == "studycmd"))
+@router.callback_query((F.data == "to_main_lang") | (F.data == "to_main") | (F.data == "studycmd") | (F.data == "cancel"))
 async def tomain(callback: CallbackQuery):
     text = f"Список доступных команд:\n/study - изучение слов\n/add - добавление карточки\n/del - удаление карточки"
-    await callback.message.edit_text(text)
+    await callback.message.edit_text(text, reply_markup=await kb.welcome_msg())
 
 
 
 
 @router.message(Command("study"))
-async def get_all(message: Message):
-    await message.answer(
-        "Выберите язык. Нажмите /add для добавления новой карточки",
-        reply_markup=await kb.languages(),
-    )
+@router.callback_query(F.data == "study")
+async def get_all(event: Message | CallbackQuery):
+    if isinstance(event, Message):
+        await event.answer(
+            "Выберите язык. Нажмите /add для добавления новой карточки",
+            reply_markup=await kb.languages(),
+        )
+    elif isinstance(event, CallbackQuery):
+        await event.answer()
+        await event.message.answer(
+            "Выберите язык. Нажмите /add для добавления новой карточки",
+            reply_markup=await kb.languages(),
+        )
 
 
 @router.callback_query(F.data.startswith("lang_"))
@@ -103,11 +111,19 @@ async def continue_learning(callback: CallbackQuery, state: FSMContext):
 
 
 @router.message(Command("add"))
-async def add_msg(message: Message, state: FSMContext):
+@router.callback_query(F.data == "add")
+async def add_msg(event: Message | CallbackQuery, state: FSMContext):
     await state.set_state(CardsFSM.adding)
-    await message.answer(
-        "Введи карточку в формате: слово, язык на который нужно перевести слово, пример: персик,испанский"
-    )
+    if isinstance(event, Message):
+        await event.answer(
+            "Введи карточку в формате: слово, язык на который нужно перевести слово, пример: персик,испанский",
+            reply_markup=await kb.cancel_button()
+        )
+    elif isinstance(event, CallbackQuery):
+        await event.message.edit_text(
+            "Введи карточку в формате: слово, язык на который нужно перевести слово, пример: персик,испанский",
+            reply_markup=await kb.cancel_button()
+        )
 
 
 @router.message(CardsFSM.adding)
@@ -123,7 +139,7 @@ async def new_word(message: Message, state: FSMContext):
         return
 
     status_msg = await message.answer("Идёт перевод слова через Gemini, подождите")
-    output = translate(word=word, lang=usr_lang)
+    output = await translate(word=word, lang=usr_lang)
 
     if output.startswith("Ошибка"):
         print(output)

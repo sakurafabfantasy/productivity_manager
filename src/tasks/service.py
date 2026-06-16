@@ -48,4 +48,37 @@ async def archive_date(id: int):
         if result:
             result.expiring_date = datetime.now() + timedelta(days=30)
         await session.commit()
-            
+
+
+async def add_sample():
+    async with async_session() as session:
+        tasks_sample = [
+            "Сделать уроки, школа",
+            "Поесть бургеры",
+            "Погулять с патриком",
+            "Погулять в чернобыле",
+            "Убраться, дом",
+            "Собрать лего, досуг"
+        ]
+        for task in tasks_sample:
+            try:
+                title, tag = task.strip().capitalize().split(",")
+            except ValueError:
+                title = task.strip().capitalize()
+            matched = await session.scalar(select(Tasks).where(Tasks.title == title))
+            if not matched:
+                await set_task(title=title, tag=tag)
+        await session.commit()
+
+
+async def info_abt_task(title: str):
+    async with async_session() as session:
+        result = await session.scalar(select(Tasks).where(Tasks.title == title))
+        if result: 
+            return result
+
+async def search_id(id: int):
+    async with async_session() as session:
+        result = await session.scalar(select(Tasks).where(Tasks.id == id))
+        if result:
+            return result.title
