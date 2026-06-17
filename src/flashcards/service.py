@@ -1,30 +1,30 @@
 from database.models import Flashcards
-from database.connection import async_session
+from database.connection import async_session_main
 from sqlalchemy import select, delete
 from datetime import timedelta, datetime
 
 async def add_word(trword: str, lang: str, word: str):
-    async with async_session() as session:
+    async with async_session_main() as session:
         slovo = await session.scalar(select(Flashcards).where(Flashcards.word == word))
         if not slovo:
             session.add(Flashcards(word=trword, language=lang, trword=word))
             await session.commit()
 
 async def cards_list():
-    async with async_session() as session:
+    async with async_session_main() as session:
         query = select(Flashcards).distinct()
         result = await session.execute(query)
         return result.scalars().all()
 
 async def del_all():
-    async with async_session() as session:
+    async with async_session_main() as session:
         await session.execute(delete(Flashcards))
         await session.commit()
 
 
 
 async def choosen_words(lang: str):
-    async with async_session() as session:
+    async with async_session_main() as session:
         current_time = datetime.now()
         query = (
             select(Flashcards.word)
@@ -37,7 +37,7 @@ async def choosen_words(lang: str):
         return result.scalars().all()
     
 async def choosen_words_tr(word: str, lang: str):
-    async with async_session() as session:
+    async with async_session_main() as session:
         query = (
             select(Flashcards.trword)
             .where(
@@ -51,7 +51,7 @@ async def choosen_words_tr(word: str, lang: str):
 
 
 async def change_card_status(word, num: int):
-    async with async_session() as session:
+    async with async_session_main() as session:
         
         card = await session.scalar(select(Flashcards).where(Flashcards.word == word))
         if card:
@@ -76,7 +76,7 @@ async def change_card_status(word, num: int):
 
 
 async def delete_card(id: int):
-    async with async_session() as session:
+    async with async_session_main() as session:
         await session.execute(delete(Flashcards).where(Flashcards.id == id))
         await session.commit()
 
@@ -132,7 +132,7 @@ async def sample_cards():
     ("Coche", "Испанский"): ("Машина", "Испанском", "Испанский")
 }
 
-    async with async_session() as session:
+    async with async_session_main() as session:
         added_count = 0
         
         for (word, lang), (outword, outlang2, outlang1) in dataset.items():

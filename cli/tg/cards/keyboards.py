@@ -15,7 +15,7 @@ async def languages():
                 )
             )
             seen_langs.add(card.language)
-    keyboard.add(InlineKeyboardButton(text="Добавить карточку", callback_data="add"))
+    keyboard.add(InlineKeyboardButton(text="Добавить карточку", callback_data="add_card"))
     keyboard.add(InlineKeyboardButton(text="На главную", callback_data="to_main_lang"))
     return keyboard.adjust(1,2).as_markup()
 
@@ -41,7 +41,7 @@ async def kb_show_start():
 async def welcome_msg():
     builder = InlineKeyboardBuilder()
     builder.add(InlineKeyboardButton(text="Изучение слов", callback_data="study"))
-    builder.add(InlineKeyboardButton(text="Добавить карточку", callback_data="add"))
+    builder.add(InlineKeyboardButton(text="Добавить карточку", callback_data="add_card"))
     return builder.adjust(1).as_markup()
 
 

@@ -21,7 +21,8 @@ async def welcome_msg(callback: CallbackQuery, state: FSMContext):
     await state.clear()
     if callback.data == "cancel":
         await callback.answer("Действие отменено")
-    await callback.message.edit_text(
+    await callback.answer()
+    await callback.message.answer(
         "Список доступных команд:\n /list_tasks - список всех задач\n/add_task - добавить задачу\n/del_task - удалить задачу\n/complete - пометить задачу как выполненную",
         reply_markup=await kb.welcome_kb()
     )
@@ -76,7 +77,8 @@ async def add_task(message: Message, state: FSMContext):
 
 @router.callback_query(F.data == "archive")
 async def show_archive_list(callback: CallbackQuery):
-    await callback.message.edit_text(
+    await callback.answer()
+    await callback.message.answer(
         "Список архивных задач", reply_markup=await kb.archive_tasks()
     )
 
@@ -87,6 +89,11 @@ async def complete_task_msg(event: Message | CallbackQuery, state: FSMContext):
     await state.set_state(TasksFSM.completing)
     tasks = await get_all_tasks()
     tasks_list = []
+    if not tasks:
+        await event.answer("Список пуст")
+        return
+            
+        
     for task in tasks:
         if task.is_completed is False:
             tasks_list.append(f"ID: {task.id}. Заголовок: {task.title}")
@@ -120,19 +127,29 @@ async def complete_task(message: Message, state: FSMContext):
 
 
 @router.message(Command("del_task"))
-async def del_task_msg(message: Message, state: FSMContext):
+@router.callback_query(F.data == "deltask")
+async def del_task_msg(event: Message | CallbackQuery, state: FSMContext):
     await state.set_state(TasksFSM.deleting)
 
     nums = await get_all_tasks()
     tasks_list = []
+    if not nums:
+        await event.answer("Список пуст")
+        return
     for num in nums:
         if num.is_completed is False:
             tasks_list.append(f"ID: {num.id}. Заголовок: {num.title}")
-
-    await message.answer("\n".join(tasks_list))
-    await message.answer(
-        "Выберите задачу или задачи(через запятую) для удаления, напишите ID. Пример: 45,67"
-    )
+    if isinstance(event, Message):
+        await event.answer("\n".join(tasks_list))
+        await event.answer(
+            "Выберите задачу или задачи(через запятую) для удаления, напишите ID. Пример: 45,67"
+        )
+    elif isinstance(event, CallbackQuery):
+        await event.answer()
+        await event.message.edit_text("\n".join(tasks_list))
+        await event.message.answer(
+            "Выберите задачу или задачи(через запятую) для удаления, напишите ID. Пример: 45,67"
+        )
 
 
 @router.message(TasksFSM.deleting)

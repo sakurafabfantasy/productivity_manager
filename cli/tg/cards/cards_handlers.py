@@ -25,7 +25,7 @@ class CardsFSM(StatesGroup):
 
 @router.callback_query((F.data == "to_main_lang") | (F.data == "to_main") | (F.data == "studycmd") | (F.data == "cancel"))
 async def tomain(callback: CallbackQuery):
-    text = f"Список доступных команд:\n/study - изучение слов\n/add - добавление карточки\n/del - удаление карточки"
+    text = f"Список доступных команд:\n/study - изучение слов\n/add_card - добавление карточки\n/del_card - удаление карточки"
     await callback.message.edit_text(text, reply_markup=await kb.welcome_msg())
 
 
@@ -36,13 +36,13 @@ async def tomain(callback: CallbackQuery):
 async def get_all(event: Message | CallbackQuery):
     if isinstance(event, Message):
         await event.answer(
-            "Выберите язык. Нажмите /add для добавления новой карточки",
+            "Выберите язык. Нажмите /add_card для добавления новой карточки",
             reply_markup=await kb.languages(),
         )
     elif isinstance(event, CallbackQuery):
         await event.answer()
         await event.message.answer(
-            "Выберите язык. Нажмите /add для добавления новой карточки",
+            "Выберите язык. Нажмите /add_card для добавления новой карточки",
             reply_markup=await kb.languages(),
         )
 
@@ -110,8 +110,8 @@ async def continue_learning(callback: CallbackQuery, state: FSMContext):
         await state.clear()
 
 
-@router.message(Command("add"))
-@router.callback_query(F.data == "add")
+@router.message(Command("add_card"))
+@router.callback_query(F.data == "add_card")
 async def add_msg(event: Message | CallbackQuery, state: FSMContext):
     await state.set_state(CardsFSM.adding)
     if isinstance(event, Message):
@@ -133,7 +133,7 @@ async def new_word(message: Message, state: FSMContext):
         word, usr_lang = [x.strip().capitalize() for x in usr_input.split(",")]
     except ValueError:
         await message.answer(
-            "Неверный формат ввода! Нажмите /add для повторного добавления"
+            "Неверный формат ввода! Нажмите /add_card для повторного добавления"
         )
         await state.clear()
         return
@@ -156,17 +156,28 @@ async def new_word(message: Message, state: FSMContext):
     )
     await state.clear()
 
-@router.message(Command("del"))
-async def del_card_msg(message: Message, state: FSMContext):
+@router.message(Command("del_card"))
+@router.callback_query(F.data == "del_card")
+async def del_card_msg(event: Message | CallbackQuery, state: FSMContext):
     await state.set_state(CardsFSM.deleting)
-    await message.answer("Введите ID карточки или карточек через запятую которые вы хотите удалить\nПример №1: 43,45. Пример №2: 56")
-    text = []
-    words = await cards_list()
-    for word in words:
-        text.append(f"ID: {word.id}, Слово: {word.word}")
-    response_text = "\n".join(text)
-    await message.answer(response_text)
-
+    if isinstance(event, Message):
+        
+        text = []
+        words = await cards_list()
+        for word in words:
+            text.append(f"ID: {word.id}, Слово: {word.word}")
+        response_text = "\n".join(text)
+        await event.answer(response_text)
+        await event.answer("Введите ID карточки или карточек через запятую которые вы хотите удалить\nПример №1: 43,45. Пример №2: 56")
+    elif isinstance(event, CallbackQuery):
+        await event.answer()
+        text = []
+        words = await cards_list()
+        for word in words:
+            text.append(f"ID: {word.id}, Слово: {word.word}")
+        response_text = "\n".join(text)
+        await event.message.edit_text(response_text)
+        await event.message.answer("Введите ID карточки или карточек через запятую которые вы хотите удалить\nПример №1: 43,45. Пример №2: 56")
 @router.message(CardsFSM.deleting)
 async def del_card(message: Message, state: FSMContext):
     nums = [item.strip() for item in message.text.split(",")]
