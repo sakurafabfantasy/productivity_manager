@@ -3,11 +3,11 @@ from database.connection import async_session_main
 from sqlalchemy import select, delete
 
 
-async def set_note(title: str, text: str, tag: str | None = None):
+async def set_note(title: str, text: str, tag: str | None = None, tg_id=int):
     async with async_session_main() as session:
         note = await session.scalar(select(Notes).where(Notes.title == title))
         if not note:
-            session.add(Notes(title=title, content=text, tag=tag))
+            session.add(Notes(title=title, content=text, tag=tag, user_id=tg_id))
             await session.commit()
 
 
@@ -17,18 +17,29 @@ async def delete_note(id: int):
         await session.commit()
 
 
-async def get_all_notes():
+async def get_all_notes(tg_id: int):
     async with async_session_main() as session:
-        result = await session.execute(select(Notes))
+        result = await session.execute(select(Notes).where(Notes.user_id == tg_id))
         return result.scalars().all()
 
 
-async def get_all_by_tags(tag: str):
+async def get_all_by_tags(tag: str, tg_id: int):
     async with async_session_main() as session:
-        result = await session.execute(select(Notes).where(Notes.tag == tag))
-        return result.scalars().all()
+        result = await session.execute(
+            select(Notes).where(Notes.tag == tag, Notes.user_id == tg_id)
+        )
+        notes = result.scalars().all()
+        if not notes:
+            return False
+        return notes
 
-async def update_note(title: str, edcontent: str | None = None, edtag: str | None = None, edtitle: str | None = None):
+
+async def update_note(
+    title: str,
+    edcontent: str | None = None,
+    edtag: str | None = None,
+    edtitle: str | None = None,
+):
     async with async_session_main() as session:
         note = await session.scalar(select(Notes).where(Notes.title == title))
         if note:
@@ -42,15 +53,9 @@ async def update_note(title: str, edcontent: str | None = None, edtag: str | Non
                 return
             await session.commit()
 
+
 async def info_note(id: int):
     async with async_session_main() as session:
         result = await session.scalar(select(Notes).where(Notes.id == id))
         if result:
             return result
-
-
-
-
-            
-
-

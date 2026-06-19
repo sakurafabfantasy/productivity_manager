@@ -6,6 +6,7 @@ from database.connection import async_main
 from cli.tg.cards.cards_handlers import router as cards_router
 from cli.tg.tasks.tasks_handlers import router as tasks_router
 from cli.tg.notes.notes_handlers import router as notes_router
+from cli.tg.unkown_handlers import router as unknown_router
 from cli.tg.common.handlers import router as base_router
 
 
@@ -13,7 +14,7 @@ async def main():
     await async_main()
     bot = Bot(token=str(TOKEN))
     dp = Dispatcher()
-    dp.include_routers(cards_router, tasks_router, base_router, notes_router)
+    dp.include_routers(cards_router, tasks_router, base_router, notes_router, unknown_router)
     await dp.start_polling(bot)
 
 

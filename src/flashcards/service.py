@@ -3,46 +3,48 @@ from database.connection import async_session_main
 from sqlalchemy import select, delete
 from datetime import timedelta, datetime
 
-async def add_word(trword: str, lang: str, word: str):
+async def add_word(trword: str, lang: str, word: str, tg_id: int):
     async with async_session_main() as session:
-        slovo = await session.scalar(select(Flashcards).where(Flashcards.word == word))
+        slovo = await session.scalar(select(Flashcards).where(Flashcards.word == word, Flashcards.user_id == tg_id))
         if not slovo:
-            session.add(Flashcards(word=trword, language=lang, trword=word))
+            session.add(Flashcards(word=trword, language=lang, trword=word, user_id=tg_id))
             await session.commit()
 
-async def cards_list():
+async def cards_list(tg_id: int):
     async with async_session_main() as session:
-        query = select(Flashcards).distinct()
+        query = select(Flashcards).where(Flashcards.user_id==tg_id).distinct()
         result = await session.execute(query)
         return result.scalars().all()
 
-async def del_all():
+async def del_all(tg_id: int):
     async with async_session_main() as session:
-        await session.execute(delete(Flashcards))
+        await session.execute(delete(Flashcards).where(Flashcards.user_id == tg_id))
         await session.commit()
 
 
 
-async def choosen_words(lang: str):
+async def choosen_words(lang: str, tg_id: int):
     async with async_session_main() as session:
         current_time = datetime.now()
         query = (
             select(Flashcards.word)
             .where(
                 Flashcards.language == lang,
-                Flashcards.available_after <= current_time  
+                Flashcards.available_after <= current_time  ,
+                Flashcards.user_id == tg_id
             )
         )
         result = await session.execute(query)
         return result.scalars().all()
     
-async def choosen_words_tr(word: str, lang: str):
+async def choosen_words_tr(word: str, lang: str, tg_id: int):
     async with async_session_main() as session:
         query = (
             select(Flashcards.trword)
             .where(
                 Flashcards.language == lang,
-                Flashcards.word == word
+                Flashcards.word == word,
+                Flashcards.user_id == tg_id
             )
         )
         result = await session.execute(query)
@@ -50,10 +52,10 @@ async def choosen_words_tr(word: str, lang: str):
 
 
 
-async def change_card_status(word, num: int):
+async def change_card_status(word, num: int, tg_id: int):
     async with async_session_main() as session:
         
-        card = await session.scalar(select(Flashcards).where(Flashcards.word == word))
+        card = await session.scalar(select(Flashcards).where(Flashcards.word == word, Flashcards.user_id == tg_id))
         if card:
             card.status = num
             match num:
@@ -70,18 +72,13 @@ async def change_card_status(word, num: int):
             await session.commit()
 
 
-
-
-        
-
-
 async def delete_card(id: int):
     async with async_session_main() as session:
         await session.execute(delete(Flashcards).where(Flashcards.id == id))
         await session.commit()
 
 
-async def sample_cards():
+async def sample_cards(tg_id: int):
     dataset = {
     # Английский
     ("Apple", "Английский"): ("Яблоко", "Английском", "Английский"),
@@ -137,11 +134,10 @@ async def sample_cards():
         
         for (word, lang), (outword, outlang2, outlang1) in dataset.items():
             # Проверяем, нет ли уже такого слова в БД (как в твоем add_word)
-            slovo = await session.scalar(select(Flashcards).where(Flashcards.word == word))
+            slovo = await session.scalar(select(Flashcards).where(Flashcards.word == word, Flashcards.user_id == tg_id))
             
             if not slovo:
-                # Добавляем точно по твоей структуре полей:
-                # word — оригинал, language — язык в им. падеже (outlang1), trword — перевод (outword)
+
                 session.add(Flashcards(
                     word=word, 
                     language=outlang1, 

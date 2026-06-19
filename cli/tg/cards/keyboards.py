@@ -3,8 +3,8 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 from src.flashcards.service import cards_list
 
 
-async def languages():
-    all_cards = await cards_list()
+async def languages(tg: int):
+    all_cards = await cards_list(tg_id=tg)
     keyboard = InlineKeyboardBuilder()
     seen_langs = set()
     for card in all_cards:
@@ -15,9 +15,11 @@ async def languages():
                 )
             )
             seen_langs.add(card.language)
-    keyboard.add(InlineKeyboardButton(text="Добавить карточку", callback_data="add_card"))
+    keyboard.add(
+        InlineKeyboardButton(text="Добавить карточку", callback_data="add_card")
+    )
     keyboard.add(InlineKeyboardButton(text="На главную", callback_data="to_main_lang"))
-    return keyboard.adjust(1,2).as_markup()
+    return keyboard.adjust(1, 2).as_markup()
 
 
 async def kb_marks(word_index: int):
@@ -33,15 +35,19 @@ async def kb_show_translation(word_index: int):
     builder.button(text="Показать перевод", callback_data=f"translate_{word_index}")
     return builder.adjust(2).as_markup()
 
+
 async def kb_show_start():
     builder = InlineKeyboardBuilder()
     builder.button(text="На главную", callback_data="to_main")
     return builder.as_markup()
 
+
 async def welcome_msg():
     builder = InlineKeyboardBuilder()
     builder.add(InlineKeyboardButton(text="Изучение слов", callback_data="study"))
-    builder.add(InlineKeyboardButton(text="Добавить карточку", callback_data="add_card"))
+    builder.add(
+        InlineKeyboardButton(text="Добавить карточку", callback_data="add_card")
+    )
     return builder.adjust(1).as_markup()
 
 
